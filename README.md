@@ -5,7 +5,6 @@
 ![python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)
 ![dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 ![tests](https://img.shields.io/badge/tests-17%20passing-brightgreen)
-[![ci](https://github.com/nickharris808/prereg-seal/actions/workflows/ci.yml/badge.svg)](https://github.com/nickharris808/prereg-seal/actions/workflows/ci.yml)
 
 **Seal your acceptance criteria before you measure, so nobody — including you — can move the
 goalposts afterward.**
