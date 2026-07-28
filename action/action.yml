@@ -14,9 +14,10 @@ inputs:
   install-from:
     description: >-
       Where to install prereg-seal from. Defaults to PyPI. Set to a path or VCS
-      URL while the package is unpublished, e.g. "./prereg-seal".
+      URL while the package is unpublished, e.g.
+      "git+https://github.com/nickharris808/prereg-seal.git".
     required: false
-    default: "prereg-seal"
+    default: "git+https://github.com/nickharris808/prereg-seal.git"
 runs:
   using: "composite"
   steps:
