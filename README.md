@@ -144,6 +144,16 @@ models, which is a separate closed product and not in these packages.
 
 Apache-2.0.
 
+## Honest scope — what this proves, and what it does not
+
+| Question | Answer |
+|---|---|
+| Is this specification the one that was sealed? | **Yes, exactly** — including Unicode normalisation, so visually identical text matches. |
+| Were the criteria edited after sealing? | **Yes, caught.** |
+| Were the criteria doctored *and* a matching seal minted? | **Caught by `bind()`**, which covers result and seal together. |
+| **When** was the seal made? | **Never established.** A digest carries no time. Anchor it externally — a public commit, a timestamping service, a preprint. |
+| Were the criteria any *good*? | **Never checked.** Sealing a bad threshold means you are honestly stuck with a bad threshold. |
+
 ---
 
 ## The rest of the toolkit
