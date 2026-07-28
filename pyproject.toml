@@ -30,3 +30,6 @@ license-files = ["LICENSE", "NOTICE"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+markers = ["network: touches the network; skips when unavailable"]

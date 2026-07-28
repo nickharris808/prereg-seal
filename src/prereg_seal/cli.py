@@ -1,4 +1,4 @@
-"""``prereg-seal seal|check|show`` — a three-verb CLI."""
+"""``prereg-seal seal|check|show|anchor|verify-anchor``."""
 from __future__ import annotations
 
 import argparse
@@ -30,6 +30,21 @@ def main(argv=None) -> int:
     d = sub.add_parser("show", help="print the digest of a specification")
     d.add_argument("spec")
 
+    an = sub.add_parser("anchor",
+                        help="record where a seal digest was published, so 'sealed' "
+                             "can become 'sealed before'")
+    an.add_argument("seal", help="the seal file, or a bare 64-hex digest")
+    an.add_argument("locator", help="owner/repo@sha, a commit URL, or any URL")
+    an.add_argument("--kind", choices=("github-commit", "url"), default="github-commit")
+    an.add_argument("--note", default="")
+    an.add_argument("-o", "--out", default="", help="write the record here")
+
+    va = sub.add_parser("verify-anchor",
+                        help="go and check the digest really is where the record says")
+    va.add_argument("record")
+    va.add_argument("--offline", action="store_true",
+                    help="do not touch the network; the result is then UNANCHORED")
+
     a = ap.parse_args(argv if argv is not None else sys.argv[1:])
 
     if a.cmd == "seal":
@@ -51,6 +66,26 @@ def main(argv=None) -> int:
             return 1
         print(f"OK  {a.spec} matches {seal_path}")
         return 0
+
+    if a.cmd == "anchor":
+        from .anchor import make_anchor
+        raw = str(a.seal)
+        dg = raw if len(raw) == 64 and all(c in "0123456789abcdef" for c in raw.lower()) \
+            else read_seal(raw)["digest"]
+        rec = make_anchor(dg, a.kind, a.locator, note=a.note)
+        out = a.out or "anchor.json"
+        Path(out).write_text(json.dumps(rec, indent=2, sort_keys=True) + "\n",
+                             encoding="utf-8")
+        print(f"wrote {out}")
+        print("This record asserts nothing yet. Run `prereg-seal verify-anchor` — "
+              "the claim is only worth what the check says.")
+        return 0
+
+    if a.cmd == "verify-anchor":
+        from .anchor import describe, verify_anchor
+        res = verify_anchor(_load(a.record), allow_network=not a.offline)
+        print(describe(res))
+        return {"ANCHORED": 0, "REFUTED": 1}.get(res["status"], 4)
 
     print(digest(_load(a.spec)))
     return 0

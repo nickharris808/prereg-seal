@@ -122,9 +122,8 @@ publish a seal before a blind evaluation and disclose the criteria after.
 
 ## What it cannot do
 
-It proves a specification is the one that was sealed. It **cannot prove when** the seal was made —
-a digest carries no time. For that you need an external anchor: a commit in a public repository, a
-timestamping service, a preprint. Anchor deliberately; the seal is the easy half.
+It proves a specification is the one that was sealed. A digest by itself carries no time — see
+**Anchoring** below, which does something about that without pretending to have solved it.
 
 It also cannot tell you whether your criteria were any *good*. Sealing a bad threshold just means
 you are honestly stuck with a bad threshold.
@@ -151,7 +150,7 @@ Apache-2.0.
 | Is this specification the one that was sealed? | **Yes, exactly** — including Unicode normalisation, so visually identical text matches. |
 | Were the criteria edited after sealing? | **Yes, caught.** |
 | Were the criteria doctored *and* a matching seal minted? | **Caught by `bind()`**, which covers result and seal together. |
-| **When** was the seal made? | **Never established.** A digest carries no time. Anchor it externally — a public commit, a timestamping service, a preprint. |
+| **When** was the seal made? | **Only via an anchor, and only on a host's word.** A digest carries no time. `prereg-seal anchor` records where the digest was published and `verify-anchor` goes and checks; the bound is as good as that host's record, which the result says out loud. Unreachable host → `UNANCHORED`, never an accepted claim. |
 | Were the criteria any *good*? | **Never checked.** Sealing a bad threshold means you are honestly stuck with a bad threshold. |
 
 ---
