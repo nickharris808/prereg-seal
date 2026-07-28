@@ -11,10 +11,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import unicodedata
 from pathlib import Path
 from typing import Any
 
-FORMAT = "prereg-seal/1"
+FORMAT = "prereg-seal/2"
+LEGACY_FORMATS = ("prereg-seal/1",)
 DOMAIN = b"PREREG-SEAL-v1"
 
 
@@ -22,14 +24,34 @@ class SealMismatch(Exception):
     """Raised when a specification does not match the seal presented with it."""
 
 
+def _nfc(obj: Any) -> Any:
+    """Recursively NFC-normalise every string.
+
+    Without this, two specifications that are *visually identical* can hash
+    differently: "café" composed (U+00E9) and decomposed (U+0065 U+0301) are
+    different byte sequences. A seal that fails for an invisible reason is worse
+    than no seal, because the user cannot tell a real change from an encoding one.
+    """
+    if isinstance(obj, str):
+        return unicodedata.normalize("NFC", obj)
+    if isinstance(obj, dict):
+        return {_nfc(k): _nfc(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_nfc(v) for v in obj]
+    return obj
+
+
 def canonicalize(spec: Any) -> bytes:
     """Deterministic bytes for any JSON-serializable specification.
 
-    Sorted keys, no insignificant whitespace, UTF-8. Two specifications that
-    differ only in key order or formatting produce identical bytes; two that
-    differ in any value do not.
+    Sorted keys, no insignificant whitespace, UTF-8, and **NFC-normalised strings**.
+    Two specifications that differ only in key order, formatting, or Unicode
+    normalisation form produce identical bytes; two that differ in any value do not.
+
+    Note that JSON has no tuple type, so ``[1,2]`` and ``(1,2)`` canonicalise
+    identically — by design, since they serialise identically.
     """
-    return json.dumps(spec, sort_keys=True, separators=(",", ":"),
+    return json.dumps(_nfc(spec), sort_keys=True, separators=(",", ":"),
                       ensure_ascii=False, allow_nan=False).encode("utf-8")
 
 
@@ -62,8 +84,15 @@ def verify(spec: Any, sealed: dict) -> None:
     """
     if not isinstance(sealed, dict):
         raise SealMismatch("seal artifact is not an object")
-    if sealed.get("format") != FORMAT:
-        raise SealMismatch(f"unknown seal format {sealed.get('format')!r}")
+    fmt = sealed.get("format")
+    if fmt in LEGACY_FORMATS:
+        raise SealMismatch(
+            f"this seal is {fmt}, which hashed strings without Unicode normalisation. "
+            f"Seals written before {FORMAT} cannot be checked against it, because two "
+            f"visually identical specifications could hash differently. Re-seal the "
+            f"specification with the current version and record the new digest.")
+    if fmt != FORMAT:
+        raise SealMismatch(f"unknown seal format {fmt!r}")
     got = digest(spec)
     want = sealed.get("digest")
     if not isinstance(want, str) or not want:
