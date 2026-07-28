@@ -1,0 +1,31 @@
+name: "prereg-seal check"
+description: "Fail the build if acceptance criteria changed after they were sealed."
+branding:
+  icon: "lock"
+  color: "blue"
+inputs:
+  spec:
+    description: "Path to the JSON acceptance specification."
+    required: true
+  seal:
+    description: "Path to the seal artifact. Defaults to <spec>.seal.json."
+    required: false
+    default: ""
+  install-from:
+    description: >-
+      Where to install prereg-seal from. Defaults to PyPI. Set to a path or VCS
+      URL while the package is unpublished, e.g. "./prereg-seal".
+    required: false
+    default: "prereg-seal"
+runs:
+  using: "composite"
+  steps:
+    - name: Check the seal
+      shell: bash
+      run: |
+        python -m pip install --quiet "${{ inputs.install-from }}"
+        if [ -n "${{ inputs.seal }}" ]; then
+          prereg-seal check "${{ inputs.spec }}" "${{ inputs.seal }}"
+        else
+          prereg-seal check "${{ inputs.spec }}"
+        fi
