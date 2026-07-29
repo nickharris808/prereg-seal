@@ -221,16 +221,24 @@ def test_a_digest_that_merely_appears_as_a_substring_still_counts_only_once():
     assert verify_anchor(rec, fetch=_fetcher("b" * 64))["status"] == P.UNANCHORED
 
 
-@pytest.mark.parametrize("exc", [
-    urllib.error.URLError("down"),
-    TimeoutError("slow"),
-    OSError("broken pipe"),
-    urllib.error.HTTPError("u", 500, "err", {}, None),
-    urllib.error.HTTPError("u", 429, "rate", {}, None),
-])
-def test_every_transport_failure_abstains(exc):
+# Parametrised over FACTORIES, not exception instances: on Python 3.9,
+# HTTPError.__getattr__ raises KeyError when pytest probes it to build a test id,
+# and collection fails before a single test runs.
+TRANSPORT_FAILURES = [
+    ("url error", lambda: urllib.error.URLError("down")),
+    ("timeout", lambda: TimeoutError("slow")),
+    ("os error", lambda: OSError("broken pipe")),
+    ("http 500", lambda: urllib.error.HTTPError("u", 500, "err", {}, None)),
+    ("http 429", lambda: urllib.error.HTTPError("u", 429, "rate", {}, None)),
+    ("http 403", lambda: urllib.error.HTTPError("u", 403, "forbidden", {}, None)),
+]
+
+
+@pytest.mark.parametrize("label,make", TRANSPORT_FAILURES,
+                         ids=[t[0] for t in TRANSPORT_FAILURES])
+def test_every_transport_failure_abstains(label, make):
     rec = P.make_anchor("a" * 64, "github-commit", "owner/repo@" + "0" * 40)
-    assert verify_anchor(rec, fetch=_fetcher(exc=exc))["status"] == P.UNANCHORED
+    assert verify_anchor(rec, fetch=_fetcher(exc=make()))["status"] == P.UNANCHORED
 
 
 def test_a_404_is_refuted_because_absence_at_a_named_place_is_evidence():
