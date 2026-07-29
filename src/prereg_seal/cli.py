@@ -26,6 +26,9 @@ def main(argv=None) -> int:
     c = sub.add_parser("check", help="check a specification against its seal")
     c.add_argument("spec")
     c.add_argument("seal", nargs="?", default=None)
+    c.add_argument("--format", choices=("text", "json", "jsonl", "sarif", "junit"),
+                   default="text")
+    c.add_argument("-o", "--output", default="")
 
     d = sub.add_parser("show", help="print the digest of a specification")
     d.add_argument("spec")
@@ -44,6 +47,9 @@ def main(argv=None) -> int:
     va.add_argument("record")
     va.add_argument("--offline", action="store_true",
                     help="do not touch the network; the result is then UNANCHORED")
+    va.add_argument("--format", choices=("text", "json", "jsonl", "sarif", "junit"),
+                    default="text")
+    va.add_argument("-o", "--output", default="")
 
     a = ap.parse_args(argv if argv is not None else sys.argv[1:])
 
@@ -54,18 +60,31 @@ def main(argv=None) -> int:
         return 0
 
     if a.cmd == "check":
+        from .report import emit
         seal_path = a.seal or (str(a.spec) + ".seal.json")
+        res = {"outcome": "SEALED", "ok": True, "errors": []}
         try:
             verify(_load(a.spec), read_seal(seal_path))
+            res["digest"] = digest(_load(a.spec))
         except SealMismatch as e:
-            print(f"SEAL MISMATCH\n  {e}", file=sys.stderr)
-            return 1
+            res = {"outcome": "MISMATCH", "ok": False, "errors": [str(e)]}
         except FileNotFoundError:
-            print(f"no seal at {seal_path} — refusing to pass an unsealed check",
+            res = {"outcome": "UNSEALED", "ok": False, "errors": [
+                f"no seal at {seal_path} — refusing to pass an unsealed check"]}
+        if a.format != "text":
+            out = emit(res, a.format, source=str(a.spec))
+            if a.output:
+                Path(a.output).write_text(out + "\n", encoding="utf-8")
+            else:
+                print(out)
+        elif res["ok"]:
+            print(f"OK  {a.spec} matches {seal_path}")
+        else:
+            print(("SEAL MISMATCH" if res["outcome"] == "MISMATCH" else "UNSEALED"),
                   file=sys.stderr)
-            return 1
-        print(f"OK  {a.spec} matches {seal_path}")
-        return 0
+            for e in res["errors"]:
+                print(f"  {e}", file=sys.stderr)
+        return 0 if res["ok"] else 1
 
     if a.cmd == "anchor":
         from .anchor import make_anchor
@@ -84,7 +103,15 @@ def main(argv=None) -> int:
     if a.cmd == "verify-anchor":
         from .anchor import describe, verify_anchor
         res = verify_anchor(_load(a.record), allow_network=not a.offline)
-        print(describe(res))
+        if a.format != "text":
+            from .report import emit
+            out = emit(res, a.format, source=str(a.record))
+            if a.output:
+                Path(a.output).write_text(out + "\n", encoding="utf-8")
+            else:
+                print(out)
+        else:
+            print(describe(res))
         return {"ANCHORED": 0, "REFUTED": 1}.get(res["status"], 4)
 
     print(digest(_load(a.spec)))

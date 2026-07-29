@@ -196,3 +196,66 @@ def test_a_real_public_commit_can_be_checked():
     # A digest of all 'd's is not in that commit, so the honest answer is REFUTED —
     # the live path reaches GitHub, reads a real commit, and says no.
     assert res["status"] == P.REFUTED
+
+
+# ---------------------------------------------------------------- emitters
+
+@pytest.mark.parametrize("fmt", ["json", "jsonl", "sarif", "junit"])
+def test_every_format_parses(fmt):
+    import xml.etree.ElementTree as ET
+
+    from prereg_seal.report import emit
+    out = emit({"outcome": "SEALED", "ok": True}, fmt)
+    if fmt == "junit":
+        ET.fromstring(out)
+    elif fmt == "jsonl":
+        [json.loads(x) for x in out.splitlines()]
+    else:
+        json.loads(out)
+
+
+def test_a_missing_seal_is_never_a_pass():
+    """An unsealed check establishes nothing. Green would be worse than silence."""
+    import xml.etree.ElementTree as ET
+
+    from prereg_seal.report import emit, outcome_meta
+    assert outcome_meta("UNSEALED")[0] is False
+    res = {"outcome": "UNSEALED", "ok": False, "errors": ["no seal"]}
+    assert json.loads(emit(res, "sarif"))["runs"][0]["invocations"][0][
+        "executionSuccessful"] is False
+    assert ET.fromstring(emit(res, "junit")).get("failures") == "1"
+
+
+def test_an_unanchored_abstention_is_a_failure_with_its_reason():
+    import xml.etree.ElementTree as ET
+
+    from prereg_seal.report import emit, outcome_meta
+    ok, level, summary = outcome_meta("UNANCHORED")
+    assert ok is False and level == "warning" and "ABSTAINED" in summary
+    x = ET.fromstring(emit({"status": "UNANCHORED", "errors": ["unreachable"]}, "junit"))
+    assert x.get("failures") == "1"
+    assert "ABSTAINED" in x.find(".//failure").get("message")
+
+
+def test_an_unknown_outcome_is_not_a_pass():
+    from prereg_seal.report import outcome_meta
+    assert outcome_meta("SOMETHING_ELSE")[0] is False
+
+
+def test_cli_check_emits_each_format(tmp_path):
+    spec = tmp_path / "s.json"
+    spec.write_text(json.dumps({"epe_nm": {"max": 2.0}}))
+    assert _cli(["seal", str(spec)]).returncode == 0
+    for fmt in ("json", "sarif", "junit", "jsonl"):
+        r = _cli(["check", str(spec), "--format", fmt])
+        assert r.returncode == 0, r.stderr
+        assert r.stdout.strip()
+
+
+def test_cli_check_reports_an_unsealed_spec_as_a_failure_in_every_format(tmp_path):
+    spec = tmp_path / "unsealed.json"
+    spec.write_text(json.dumps({"a": 1}))
+    for fmt in ("sarif", "junit"):
+        r = _cli(["check", str(spec), "--format", fmt])
+        assert r.returncode == 1, fmt
+        assert "UNSEALED" in r.stdout
