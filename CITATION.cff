@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: "prereg-seal"
+message: "If you use this software, please cite it."
+type: software
+authors:
+  - alias: nickharris808
+    website: "https://github.com/nickharris808"
+repository-code: "https://github.com/nickharris808/prereg-seal"
+url: "https://github.com/nickharris808/certified-oss"
+abstract: >-
+  Seal acceptance criteria before you measure, and anchor the seal in public.
+  Part of certified-oss, built on one position: a recorded verdict is a claim to
+  be checked, never an input to be trusted.
+keywords:
+  - verification
+  - certificates
+  - reproducibility
+license: Apache-2.0
+version: "1.0.0"
+date-released: "2026-07-29"

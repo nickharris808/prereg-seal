@@ -104,8 +104,12 @@ def to_junit(res: Dict, source: str = "spec") -> str:
     case = ET.SubElement(suite, "testcase", classname="prereg-seal",
                          name=f"seal {source}")
     if not f["ok"]:
-        fail = ET.SubElement(case, "failure", type=str(f["outcome"]),
-                             message=f["summary"])
+        # A missing or None outcome must still render: ElementTree refuses to
+        # serialise None, and a result that cannot be reported is worse than one
+        # that reports "unknown".
+        fail = ET.SubElement(case, "failure",
+                             type=str(f["outcome"] or "UNKNOWN"),
+                             message=str(f["summary"]))
         fail.text = "\n".join(f["errors"]) or f["summary"]
     out = ET.SubElement(suite, "system-out")
     out.text = (f"outcome={f['outcome']} digest={f['digest']} "

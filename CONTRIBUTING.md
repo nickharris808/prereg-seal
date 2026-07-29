@@ -1,30 +1,28 @@
-# Contributing
+# Contributing to prereg-seal
 
-`prereg-seal` is intentionally tiny. The whole implementation is one file you can
-read in ten minutes, and it should stay that way.
+This package is part of [certified-oss][p]. **The portfolio-wide guide is
+[CONTRIBUTING.md][c] and it is the one to read** — it covers the rules that are not negotiable,
+how to install packages that depend on each other, and what kind of contribution is most wanted
+(a forgery this project fails to catch).
 
-## The rules
+What is specific to this package:
 
-1. **No dependencies.** Standard library only. This tool gets installed into
-   other people's CI; it must never drag anything in.
-2. **The canonical form is frozen.** `canonicalize()` defines what "the same
-   specification" means. Changing it invalidates every seal anyone has ever
-   written. If it must change, that is a new `FORMAT` string, not an edit.
-3. **Fail closed.** A missing seal, an unreadable seal, or an unknown format is
-   a failure, never a pass. New code paths must preserve this.
-4. **Every check needs a tamper test**, and a matching *revert* test showing the
-   check goes green again. A check that can only fail proves nothing.
+- **A missing seal is not a pass.** `check` exits non-zero when the seal is absent, and every
+  emitter renders that as a failure.
+- **An anchor record never asserts itself.** `verify_anchor` with no network returns `UNANCHORED`
+  however confidently the record describes itself, and a mutable ref is refused.
 
-## Running the tests
+## Working on it
 
-```
+```bash
 pip install -e ".[test]"
-pytest
+pytest -q
+ruff check .
 ```
 
-## Scope
+## Licence
 
-This tool proves a specification is the one that was sealed. It cannot prove
-*when* it was sealed — that needs an external anchor (a commit in a public repo,
-a timestamping service, a preprint). Issues asking for trusted timestamping are
-welcome; issues asking the seal to imply time on its own will be closed.
+Apache-2.0. By contributing you agree your contribution is licensed the same way.
+
+[p]: https://github.com/nickharris808/certified-oss
+[c]: https://github.com/nickharris808/certified-oss/blob/main/CONTRIBUTING.md

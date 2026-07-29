@@ -122,7 +122,18 @@ def verify_anchor(record: Dict, *, fetch: Optional[Callable[[str, float], str]] 
             url = f"https://api.github.com/repos/{p['owner']}/{p['repo']}/commits/{p['sha']}"
             body = json.loads(getter(url, timeout))
             observed_by = "github.com"
-            when = (((body.get("commit") or {}).get("committer") or {}).get("date"))
+            # The host can return anything. A response that is not an object, or
+            # whose fields are not where they should be, means the check could
+            # not be made -- an abstention, never an exception.
+            if not isinstance(body, dict):
+                return _result(UNANCHORED, record, None, [
+                    f"the host returned {type(body).__name__}, not an object, so "
+                    f"nothing could be checked"], observed_by=observed_by)
+            commit = body.get("commit")
+            committer = commit.get("committer") if isinstance(commit, dict) else None
+            when = committer.get("date") if isinstance(committer, dict) else None
+            if not isinstance(when, str):
+                when = None
             haystack = json.dumps(body)
             # The committer date is supplied by whoever made the commit and is
             # therefore forgeable. The *push* is what GitHub witnessed, so this is
